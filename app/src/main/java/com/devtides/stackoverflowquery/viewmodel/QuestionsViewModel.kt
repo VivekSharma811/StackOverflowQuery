@@ -2,8 +2,12 @@ package com.devtides.stackoverflowquery.viewmodel
 
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
-import com.devtides.stackoverflowquery.model.DummyDataProvider
 import com.devtides.stackoverflowquery.model.Question
+import com.devtides.stackoverflowquery.model.ResponseWrapper
+import com.devtides.stackoverflowquery.model.StackOverflowService
+import retrofit2.Call
+import retrofit2.Response
+import javax.security.auth.callback.Callback
 
 class QuestionsViewModel : ViewModel() {
 
@@ -11,10 +15,37 @@ class QuestionsViewModel : ViewModel() {
     val loading = MutableLiveData<Boolean>()
     val error = MutableLiveData<String>()
 
-    fun getQuestions() {
-        questionsResponse.value = DummyDataProvider.getDummyData(30)
-        loading.value = false
-        error.value = null
+    var page = 0
+
+    fun getNextPage() {
+        page++
+        getQuestions()
+    }
+
+    fun getFirstPage() {
+        page = 1
+        getQuestions()
+    }
+
+    private fun getQuestions() {
+        StackOverflowService.api.getQuestions(page)
+            .enqueue(object : retrofit2.Callback<ResponseWrapper<Question>> {
+                override fun onResponse(call: Call<ResponseWrapper<Question>>, response: Response<ResponseWrapper<Question>>) {
+                    if(response.isSuccessful) {
+                        val questions = response.body()
+                        questions?.let {
+                            questionsResponse.value = questions.items
+                            loading.value = false
+                            error.value = null
+                        }
+                    }
+                }
+
+                override fun onFailure(call: Call<ResponseWrapper<Question>>, t: Throwable) {
+                    onError(t.localizedMessage)
+                }
+
+            })
     }
 
     private fun onError(message: String) {
